@@ -1,12 +1,9 @@
 package com.dmart.controller;
 
 import com.dmart.entity.Order;
-import com.dmart.entity.OrderItem;
+import com.dmart.entity.OrderStatus;
 import com.dmart.service.OrderService;
 
-import jakarta.validation.Valid;
-
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,21 +19,7 @@ public class OrderController {
         this.orderService = orderService;
     }
 
-    // ================= CREATE ORDER =================
-
-    @PostMapping
-    public ResponseEntity<Order> addOrder(
-            @Valid @RequestBody Order order) {
-
-        Order savedOrder = orderService.addOrder(order);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(savedOrder);
-    }
-
-    // ================= GET ALL ORDERS =================
-
+    // Get all orders
     @GetMapping
     public ResponseEntity<List<Order>> getAllOrders() {
 
@@ -45,19 +28,17 @@ public class OrderController {
         );
     }
 
-    // ================= GET ORDER BY ID =================
-
-    @GetMapping("/{id}")
+    // Get order by ID
+    @GetMapping("/{orderId}")
     public ResponseEntity<Order> getOrderById(
-            @PathVariable Long id) {
+            @PathVariable Long orderId) {
 
         return ResponseEntity.ok(
-                orderService.getOrderById(id)
+                orderService.getOrderById(orderId)
         );
     }
 
-    // ================= GET ORDERS BY USER =================
-
+    // Get orders by user
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<Order>> getOrdersByUser(
             @PathVariable Long userId) {
@@ -67,71 +48,29 @@ public class OrderController {
         );
     }
 
-    // ================= GET ORDER ITEMS =================
+    // Update order status
+    @PutMapping("/{orderId}/status")
+    public ResponseEntity<Order> updateOrderStatus(
+            @PathVariable Long orderId,
+            @RequestParam OrderStatus status) {
 
-    @GetMapping("/{orderId}/items")
-    public ResponseEntity<List<OrderItem>> getOrderItems(
+        return ResponseEntity.ok(
+                orderService.updateOrderStatus(
+                        orderId,
+                        status
+                )
+        );
+    }
+
+    // Cancel order
+    @PutMapping("/{orderId}/cancel")
+    public ResponseEntity<Order> cancelOrder(
             @PathVariable Long orderId) {
 
         return ResponseEntity.ok(
-                orderService.getOrderItems(orderId)
-        );
-    }
-
-    // ================= UPDATE ORDER =================
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Order> updateOrder(
-            @PathVariable Long id,
-            @Valid @RequestBody Order order) {
-
-        return ResponseEntity.ok(
-                orderService.updateOrder(id, order)
-        );
-    }
-
-    // ================= DELETE ORDER =================
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteOrder(
-            @PathVariable Long id) {
-
-        orderService.deleteOrder(id);
-
-        return ResponseEntity.ok(
-                "Order deleted successfully"
-        );
-    }
-
-    // ================= ADD ORDER ITEM =================
-
-    @PostMapping("/{orderId}/items/{productId}")
-    public ResponseEntity<OrderItem> addOrderItem(
-            @PathVariable Long orderId,
-            @PathVariable Long productId,
-            @RequestParam int quantity) {
-
-        OrderItem savedItem = orderService.addOrderItem(
-                orderId,
-                productId,
-                quantity
-        );
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(savedItem);
-    }
-
-    // ================= DELETE ORDER ITEM =================
-
-    @DeleteMapping("/items/{orderItemId}")
-    public ResponseEntity<String> deleteOrderItem(
-            @PathVariable Long orderItemId) {
-
-        orderService.deleteOrderItem(orderItemId);
-
-        return ResponseEntity.ok(
-                "Order item deleted successfully"
+                orderService.cancelOrder(
+                        orderId
+                )
         );
     }
 }

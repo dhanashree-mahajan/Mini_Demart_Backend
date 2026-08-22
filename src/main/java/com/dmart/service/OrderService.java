@@ -2,15 +2,14 @@ package com.dmart.service;
 
 import com.dmart.entity.Order;
 import com.dmart.entity.OrderItem;
+import com.dmart.entity.OrderStatus;
 import com.dmart.entity.Product;
-import com.dmart.entity.User;
 import com.dmart.exception.ResourceNotFoundException;
-import com.dmart.repository.OrderItemRepository;
 import com.dmart.repository.OrderRepository;
 import com.dmart.repository.ProductRepository;
-import com.dmart.repository.UserRepository;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -18,195 +17,241 @@ import java.util.List;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
-    private final UserRepository userRepository;
 
     public OrderService(
             OrderRepository orderRepository,
-            OrderItemRepository orderItemRepository,
-            ProductRepository productRepository,
-            UserRepository userRepository) {
+            ProductRepository productRepository) {
 
         this.orderRepository = orderRepository;
-        this.orderItemRepository = orderItemRepository;
         this.productRepository = productRepository;
-        this.userRepository = userRepository;
     }
 
-    // ================= CREATE ORDER =================
-
-    public Order addOrder(Order order) {
-
-        Long userId = order.getUser().getId();
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found"));
-
-        order.setUser(user);
-
-        return orderRepository.save(order);
-    }
-
-    // ================= GET ALL ORDERS =================
-
+    // Get all orders
     public List<Order> getAllOrders() {
 
         return orderRepository.findAll();
     }
 
-    // ================= GET ORDER BY ID =================
+    // Get order by ID
+    public Order getOrderById(Long orderId) {
 
-    public Order getOrderById(Long id) {
-
-        return orderRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Order not found"));
-    }
-
-    // ================= GET ORDERS BY USER =================
-
-    public List<Order> getOrdersByUser(Long userId) {
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found"));
-
-        return orderRepository.findByUser(user);
-    }
-
-    // ================= UPDATE ORDER =================
-
-    public Order updateOrder(Long id, Order order) {
-
-        Order existingOrder = getOrderById(id);
-
-        existingOrder.setTotalAmount(order.getTotalAmount());
-        existingOrder.setStatus(order.getStatus());
-        existingOrder.setFulfillmentType(order.getFulfillmentType());
-        existingOrder.setOrderDate(order.getOrderDate());
-        existingOrder.setScheduledDate(order.getScheduledDate());
-        existingOrder.setDeliveryAddress(order.getDeliveryAddress());
-
-        Long userId = order.getUser().getId();
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found"));
-
-        existingOrder.setUser(user);
-
-        return orderRepository.save(existingOrder);
-    }
-
-    // ================= DELETE ORDER =================
-
-    public void deleteOrder(Long id) {
-
-        Order order = getOrderById(id);
-
-        orderRepository.delete(order);
-    }
-
-    // ================= ADD ORDER ITEM =================
-
-    public OrderItem addOrderItem(
-            Long orderId,
-            Long productId,
-            int quantity) {
-
-        Order order = getOrderById(orderId);
-
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Product not found"));
-
-        if (quantity <= 0) {
-            throw new IllegalArgumentException(
-                    "Quantity must be greater than 0");
-        }
-
-        if (product.getStockQuantity() < quantity) {
-            throw new IllegalArgumentException(
-                    "Insufficient stock");
-        }
-
-        OrderItem orderItem = new OrderItem();
-
-        orderItem.setOrder(order);
-        orderItem.setProduct(product);
-        orderItem.setQuantity(quantity);
-        orderItem.setPrice(product.getPrice());
-
-        // Reduce product stock
-        product.setStockQuantity(
-                product.getStockQuantity() - quantity
-        );
-
-        productRepository.save(product);
-
-        OrderItem savedItem = orderItemRepository.save(orderItem);
-
-        calculateTotalAmount(order);
-
-        return savedItem;
-    }
-
-    // ================= GET ORDER ITEMS =================
-
-    public List<OrderItem> getOrderItems(Long orderId) {
-
-        Order order = getOrderById(orderId);
-
-        return orderItemRepository.findByOrder(order);
-    }
-
-    // ================= DELETE ORDER ITEM =================
-
-    public void deleteOrderItem(Long orderItemId) {
-
-        OrderItem orderItem = orderItemRepository.findById(orderItemId)
+        return orderRepository.findById(orderId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "Order item not found"));
-
-        Order order = orderItem.getOrder();
-
-        Product product = orderItem.getProduct();
-
-        // Return quantity back to stock
-        product.setStockQuantity(
-                product.getStockQuantity()
-                        + orderItem.getQuantity()
-        );
-
-        productRepository.save(product);
-
-        // Delete order item
-        orderItemRepository.delete(orderItem);
-
-        // Recalculate order total
-        calculateTotalAmount(order);
+                                "Order not found"));
     }
 
-    // ================= CALCULATE ORDER TOTAL =================
+    // Get orders by user
+    public List<Order> getOrdersByUser(Long userId) {
 
-    private void calculateTotalAmount(Order order) {
+        return orderRepository.findByUserId(userId);
+    }
 
-        List<OrderItem> items =
-                orderItemRepository.findByOrder(order);
+    // Update order status
+    @Transactional
+    public Order updateOrderStatus(
+            Long orderId,
+            OrderStatus newStatus) {
 
-        double total = 0;
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Order not found"));
 
-        for (OrderItem item : items) {
+        OrderStatus currentStatus =
+                order.getStatus();
 
-            total += item.getPrice()
-                    * item.getQuantity();
+        validateStatusTransition(
+                currentStatus,
+                newStatus
+        );
+
+        order.setStatus(newStatus);
+
+        return orderRepository.save(order);
+    }
+
+    // Cancel order
+    @Transactional
+    public Order cancelOrder(Long orderId) {
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Order not found"));
+
+        OrderStatus currentStatus =
+                order.getStatus();
+
+        // Only these statuses can be cancelled
+        if (currentStatus != OrderStatus.PENDING
+                && currentStatus != OrderStatus.CONFIRMED
+                && currentStatus != OrderStatus.PREPARING
+                && currentStatus != OrderStatus.READY_FOR_PICKUP) {
+
+            throw new IllegalArgumentException(
+                    "Order cannot be cancelled in "
+                            + currentStatus + " status");
         }
 
-        order.setTotalAmount(total);
+        // Restore stock
+        if (order.getOrderItems() != null) {
 
-        orderRepository.save(order);
+            for (OrderItem orderItem :
+                    order.getOrderItems()) {
+
+                Product product =
+                        orderItem.getProduct();
+
+                product.setStockQuantity(
+                        product.getStockQuantity()
+                                + orderItem.getQuantity()
+                );
+
+                productRepository.save(product);
+            }
+        }
+
+        // Change status
+        order.setStatus(
+                OrderStatus.CANCELLED
+        );
+
+        return orderRepository.save(order);
+    }
+
+    // Validate order status transitions
+    private void validateStatusTransition(
+            OrderStatus currentStatus,
+            OrderStatus newStatus) {
+
+        // Same status
+        if (currentStatus == newStatus) {
+
+            throw new IllegalArgumentException(
+                    "Order is already in "
+                            + newStatus + " status");
+        }
+
+        // Cancelled cannot be changed
+        if (currentStatus ==
+                OrderStatus.CANCELLED) {
+
+            throw new IllegalArgumentException(
+                    "Cancelled order cannot be updated");
+        }
+
+        // Delivered cannot be changed
+        if (currentStatus ==
+                OrderStatus.DELIVERED) {
+
+            throw new IllegalArgumentException(
+                    "Delivered order cannot be updated");
+        }
+
+        // Picked up cannot be changed
+        if (currentStatus ==
+                OrderStatus.PICKED_UP) {
+
+            throw new IllegalArgumentException(
+                    "Picked up order cannot be updated");
+        }
+
+        // --------------------------------
+        // PENDING
+        // --------------------------------
+        if (currentStatus ==
+                OrderStatus.PENDING) {
+
+            if (newStatus !=
+                    OrderStatus.CONFIRMED
+                    && newStatus !=
+                    OrderStatus.CANCELLED) {
+
+                throw new IllegalArgumentException(
+                        "Pending order can only be "
+                                + "CONFIRMED or CANCELLED");
+            }
+
+            return;
+        }
+
+        // --------------------------------
+        // CONFIRMED
+        // --------------------------------
+        if (currentStatus ==
+                OrderStatus.CONFIRMED) {
+
+            if (newStatus !=
+                    OrderStatus.PREPARING
+                    && newStatus !=
+                    OrderStatus.CANCELLED) {
+
+                throw new IllegalArgumentException(
+                        "Confirmed order can only be "
+                                + "PREPARING or CANCELLED");
+            }
+
+            return;
+        }
+
+        // --------------------------------
+        // PREPARING
+        // --------------------------------
+        if (currentStatus ==
+                OrderStatus.PREPARING) {
+
+            if (newStatus !=
+                    OrderStatus.READY_FOR_PICKUP
+                    && newStatus !=
+                    OrderStatus.OUT_FOR_DELIVERY
+                    && newStatus !=
+                    OrderStatus.CANCELLED) {
+
+                throw new IllegalArgumentException(
+                        "Preparing order can only be "
+                                + "READY_FOR_PICKUP, "
+                                + "OUT_FOR_DELIVERY or CANCELLED");
+            }
+
+            return;
+        }
+
+        // --------------------------------
+        // READY FOR PICKUP
+        // --------------------------------
+        if (currentStatus ==
+                OrderStatus.READY_FOR_PICKUP) {
+
+            if (newStatus !=
+                    OrderStatus.PICKED_UP
+                    && newStatus !=
+                    OrderStatus.CANCELLED) {
+
+                throw new IllegalArgumentException(
+                        "Ready for pickup order can only be "
+                                + "PICKED_UP or CANCELLED");
+            }
+
+            return;
+        }
+
+        // --------------------------------
+        // OUT FOR DELIVERY
+        // --------------------------------
+        if (currentStatus ==
+                OrderStatus.OUT_FOR_DELIVERY) {
+
+            if (newStatus !=
+                    OrderStatus.DELIVERED) {
+
+                throw new IllegalArgumentException(
+                        "Out for delivery order can only be "
+                                + "DELIVERED");
+            }
+
+            return;
+        }
     }
 }
