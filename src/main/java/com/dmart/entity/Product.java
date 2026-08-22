@@ -25,6 +25,8 @@ public class Product {
     @PositiveOrZero(message = "Stock quantity cannot be negative")
     private int stockQuantity;
 
+    private String imageUrl;
+
     @NotNull(message = "Category is required")
     @ManyToOne
     @JoinColumn(name = "category_id")
@@ -33,14 +35,21 @@ public class Product {
     public Product() {
     }
 
-    public Product(Long id, String name, String description,
-                   double price, int stockQuantity, Category category) {
+    public Product(
+            Long id,
+            String name,
+            String description,
+            double price,
+            int stockQuantity,
+            String imageUrl,
+            Category category) {
 
         this.id = id;
         this.name = name;
         this.description = description;
         this.price = price;
         this.stockQuantity = stockQuantity;
+        this.imageUrl = imageUrl;
         this.category = category;
     }
 
@@ -82,6 +91,14 @@ public class Product {
 
     public void setStockQuantity(int stockQuantity) {
         this.stockQuantity = stockQuantity;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     public Category getCategory() {
