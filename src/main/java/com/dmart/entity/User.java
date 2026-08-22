@@ -1,5 +1,7 @@
 package com.dmart.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -10,33 +12,28 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
+    @JsonIgnore
     private String password;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private Role role;
 
-    // Default constructor
     public User() {
     }
 
-    // Constructor
-    public User(Long id, String name, String email, String password, Role role) {
+    public User(Long id, String name, String email,
+                String password, Role role) {
+
         this.id = id;
         this.name = name;
         this.email = email;
         this.password = password;
         this.role = role;
     }
-
-    // Getters and Setters
 
     public Long getId() {
         return id;
@@ -62,6 +59,7 @@ public class User {
         this.email = email;
     }
 
+    @JsonIgnore
     public String getPassword() {
         return password;
     }
