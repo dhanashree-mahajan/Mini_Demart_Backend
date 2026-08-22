@@ -2,6 +2,7 @@ package com.dmart.service;
 
 import com.dmart.entity.Category;
 import com.dmart.entity.Product;
+import com.dmart.exception.ResourceNotFoundException;
 import com.dmart.repository.CategoryRepository;
 import com.dmart.repository.ProductRepository;
 
@@ -29,7 +30,7 @@ public class ProductService {
 
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() ->
-                        new RuntimeException("Category not found"));
+                        new ResourceNotFoundException("Category not found"));
 
         product.setCategory(category);
 
@@ -37,6 +38,7 @@ public class ProductService {
     }
 
     public List<Product> getAllProducts() {
+
         return productRepository.findAll();
     }
 
@@ -44,7 +46,7 @@ public class ProductService {
 
         return productRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Product not found"));
+                        new ResourceNotFoundException("Product not found"));
     }
 
     public Product updateProduct(Long id, Product product) {
@@ -60,7 +62,7 @@ public class ProductService {
 
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() ->
-                        new RuntimeException("Category not found"));
+                        new ResourceNotFoundException("Category not found"));
 
         existingProduct.setCategory(category);
 

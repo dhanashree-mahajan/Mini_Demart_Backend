@@ -5,6 +5,8 @@ import com.dmart.dto.LoginRequest;
 import com.dmart.dto.RegisterRequest;
 import com.dmart.entity.Role;
 import com.dmart.entity.User;
+import com.dmart.exception.EmailAlreadyExistsException;
+import com.dmart.exception.ResourceNotFoundException;
 import com.dmart.repository.UserRepository;
 import com.dmart.security.JwtService;
 
@@ -36,7 +38,9 @@ public class AuthService {
     public AuthResponse register(RegisterRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already registered");
+            throw new EmailAlreadyExistsException(
+                    "Email already registered"
+            );
         }
 
         User user = new User();
@@ -83,7 +87,7 @@ public class AuthService {
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         var userDetails =
                 org.springframework.security.core.userdetails.User
