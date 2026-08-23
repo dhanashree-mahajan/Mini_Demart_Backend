@@ -61,8 +61,7 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(List.of(
                 "https://grocery-hub-ui.preview.emergentagent.com",
                 "http://localhost:3000",
-                "http://localhost:5173",
-                "http://localhost:5175"
+                "https://grocery-hub-ui.emergent.host" 
         ));
 
         configuration.setAllowedMethods(List.of(
