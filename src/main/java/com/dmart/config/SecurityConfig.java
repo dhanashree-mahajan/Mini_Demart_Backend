@@ -4,7 +4,7 @@ import com.dmart.security.JwtAuthenticationFilter;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -51,8 +51,6 @@ public class SecurityConfig {
 
     // ================= CORS =================
 
- // ================= CORS =================
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
@@ -61,7 +59,7 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(List.of(
                 "https://grocery-hub-ui.preview.emergentagent.com",
                 "http://localhost:3000",
-                "https://grocery-hub-ui.emergent.host" 
+                "https://grocery-hub-ui.emergent.host"
         ));
 
         configuration.setAllowedMethods(List.of(
@@ -93,7 +91,6 @@ public class SecurityConfig {
 
         http
                 .cors(cors -> {})
-
                 .csrf(csrf -> csrf.disable())
 
                 .sessionManagement(session ->
@@ -104,30 +101,80 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
+                        // ================= AUTH =================
+
                         .requestMatchers(
                                 "/api/auth/register",
                                 "/api/auth/login"
                         ).permitAll()
 
+
+                        // ================= PRODUCTS =================
+
+                        // Everyone can view products
                         .requestMatchers(
+                                HttpMethod.GET,
                                 "/api/products/**"
                         ).permitAll()
 
+                        // Only ADMIN and STAFF can create products
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/products/**"
+                        ).hasAnyRole("ADMIN", "STAFF")
+
+                        // Only ADMIN and STAFF can update products
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/products/**"
+                        ).hasAnyRole("ADMIN", "STAFF")
+
+                        // Only ADMIN and STAFF can partially update products
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/products/**"
+                        ).hasAnyRole("ADMIN", "STAFF")
+
+                        // Only ADMIN can delete products
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/products/**"
+                        ).hasRole("ADMIN")
+
+
+                        // ================= ADMIN =================
+
+                        // Only ADMIN can access admin APIs
                         .requestMatchers(
                                 "/api/admin/**"
                         ).hasRole("ADMIN")
 
+
+                        // ================= ORDERS =================
+
+                        // Logged-in users
                         .requestMatchers(
                                 "/api/orders/**"
                         ).authenticated()
 
+
+                        // ================= CART =================
+
+                        // Logged-in users
                         .requestMatchers(
                                 "/api/cart/**"
                         ).authenticated()
 
+
+                        // ================= CHECKOUT =================
+
+                        // Logged-in users
                         .requestMatchers(
                                 "/api/checkout/**"
                         ).authenticated()
+
+
+                        // ================= OTHER APIs =================
 
                         .anyRequest().authenticated()
                 )
